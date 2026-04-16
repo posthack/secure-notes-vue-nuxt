@@ -17,6 +17,16 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2026-06-30',
 
+  typescript: {
+    strict: true,
+    tsConfig: {
+      compilerOptions: {
+        noUncheckedIndexedAccess: true,
+        noImplicitOverride: true
+      }
+    }
+  },
+
   eslint: {
     config: {
       stylistic: {
