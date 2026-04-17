@@ -2,12 +2,12 @@
 useHead({
   htmlAttrs: { lang: 'ru' },
   meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
-  link: [{ rel: 'icon', href: '/favicon.ico' }]
+  link: [{ rel: 'icon', href: '/favicon.ico' }],
 })
 
 useSeoMeta({
   title: 'Secure Notes',
-  description: 'Заметки со сквозным шифрованием на клиенте. Сервер хранит только шифртекст.'
+  description: 'Заметки со сквозным шифрованием на клиенте. Сервер хранит только шифртекст.',
 })
 </script>
 
@@ -15,12 +15,7 @@ useSeoMeta({
   <UApp>
     <UHeader>
       <template #left>
-        <NuxtLink
-          to="/"
-          class="font-semibold text-highlighted"
-        >
-          Secure Notes
-        </NuxtLink>
+        <NuxtLink to="/" class="font-semibold text-highlighted"> Secure Notes </NuxtLink>
       </template>
 
       <template #right>
