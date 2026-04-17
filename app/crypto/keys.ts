@@ -25,3 +25,22 @@ export async function deriveMasterKey(
     ['wrapKey', 'unwrapKey'],
   )
 }
+
+export async function wrapDek(
+  dek: CryptoKey,
+  masterKey: CryptoKey,
+): Promise<Uint8Array<ArrayBuffer>> {
+  const wrapped = await crypto.subtle.wrapKey('raw', dek, masterKey, 'AES-KW')
+  return new Uint8Array(wrapped)
+}
+
+// dek извлекаемый — иначе не переобернуть при смене пароля
+export function unwrapDek(
+  wrapped: Uint8Array<ArrayBuffer>,
+  masterKey: CryptoKey,
+): Promise<CryptoKey> {
+  return crypto.subtle.unwrapKey('raw', wrapped, masterKey, 'AES-KW', { name: 'AES-GCM' }, true, [
+    'encrypt',
+    'decrypt',
+  ])
+}
