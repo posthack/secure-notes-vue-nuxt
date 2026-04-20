@@ -1,3 +1,5 @@
+import type { Bytes } from './types'
+
 export const KDF_ITERATIONS = 600_000
 export const SALT_BYTES = 16
 
@@ -7,7 +9,7 @@ export function generateDek(): Promise<CryptoKey> {
 
 export async function deriveMasterKey(
   password: string,
-  salt: Uint8Array<ArrayBuffer>,
+  salt: Bytes,
   iterations = KDF_ITERATIONS,
 ): Promise<CryptoKey> {
   const material = await crypto.subtle.importKey(
@@ -26,19 +28,13 @@ export async function deriveMasterKey(
   )
 }
 
-export async function wrapDek(
-  dek: CryptoKey,
-  masterKey: CryptoKey,
-): Promise<Uint8Array<ArrayBuffer>> {
+export async function wrapDek(dek: CryptoKey, masterKey: CryptoKey): Promise<Bytes> {
   const wrapped = await crypto.subtle.wrapKey('raw', dek, masterKey, 'AES-KW')
   return new Uint8Array(wrapped)
 }
 
 // dek извлекаемый — иначе не переобернуть при смене пароля
-export function unwrapDek(
-  wrapped: Uint8Array<ArrayBuffer>,
-  masterKey: CryptoKey,
-): Promise<CryptoKey> {
+export function unwrapDek(wrapped: Bytes, masterKey: CryptoKey): Promise<CryptoKey> {
   return crypto.subtle.unwrapKey('raw', wrapped, masterKey, 'AES-KW', { name: 'AES-GCM' }, true, [
     'encrypt',
     'decrypt',
