@@ -12,13 +12,18 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "prepare": "husky"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.117",
     "@iconify-json/simple-icons": "^1.2.90",
+    "@libsql/client": "^0.17.4",
     "@nuxt/ui": "^4.10.0",
     "@pinia/nuxt": "^1.0.1",
+    "better-auth": "^1.6.24",
+    "drizzle-orm": "^0.45.2",
     "idb": "^8.0.3",
     "nuxt": "^4.4.8",
     "pinia": "^4.0.2",
@@ -26,6 +31,7 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.16.0",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
     "fake-indexeddb": "^6.2.5",
