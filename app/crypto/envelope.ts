@@ -35,3 +35,14 @@ export async function openString(
   const sealed = { iv: fromBase64(env.iv), ciphertext: fromBase64(env.ct) }
   return new TextDecoder().decode(await decryptItem(dek, sealed, aad))
 }
+
+// смена пароля: разворачиваем dek старым ключом, оборачиваем новым. шифртекст не трогаем
+export async function rewrapEnvelope(
+  env: ItemEnvelope,
+  oldMasterKey: CryptoKey,
+  newMasterKey: CryptoKey,
+): Promise<ItemEnvelope> {
+  const dek = await unwrapDek(fromBase64(env.wrappedKey), oldMasterKey)
+  const wrapped = await wrapDek(dek, newMasterKey)
+  return { ...env, wrappedKey: toBase64(wrapped) }
+}
