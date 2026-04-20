@@ -10,6 +10,8 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/': { prerender: true },
+    // хранилище работает с воркером, indexeddb и криптой — только на клиенте
+    '/app': { ssr: false },
   },
 
   compatibilityDate: '2026-06-30',
