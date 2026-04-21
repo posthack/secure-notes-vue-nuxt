@@ -2,7 +2,17 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { CryptoClient } from '~/crypto/session'
 import { WorkerCryptoClient } from '~/lib/cryptoClient'
-import { deleteNote, getAllNotes, getVaultMeta, putNote, setVaultMeta } from '~/lib/db'
+import {
+  deleteNote,
+  getAllNotes,
+  getVaultMeta,
+  putNote,
+  setVaultMeta,
+  type VaultMeta,
+} from '~/lib/db'
+import { pullVault, pushNote, pushVault, syncNotes } from '~/lib/sync'
+
+const TOMBSTONE_ENV = { v: 1, wrappedKey: '', iv: '', ct: '' } as const
 
 export interface Note {
   id: string
@@ -22,14 +32,34 @@ export const useNotesStore = defineStore('notes', () => {
   const client = makeClient()
   const status = ref<Status>('loading')
   const notes = ref<Note[]>([])
+  const remote = ref(false)
 
   async function init() {
     status.value = (await getVaultMeta()) ? 'locked' : 'empty'
   }
 
+  // включаем синк после логина; на новом устройстве подтягиваем чужой vault
+  async function enableSync() {
+    remote.value = true
+    if (status.value === 'empty') {
+      const meta = await pullVault()
+      if (meta) {
+        await setVaultMeta(meta)
+        status.value = 'locked'
+      }
+    }
+  }
+
+  async function sync() {
+    if (!remote.value) return
+    if (await syncNotes()) await loadNotes()
+  }
+
   async function setup(password: string) {
     const params = await client.setup(password)
-    await setVaultMeta({ v: 1, ...params })
+    const meta: VaultMeta = { v: 1, ...params }
+    await setVaultMeta(meta)
+    if (remote.value) await pushVault(meta)
     notes.value = []
     status.value = 'unlocked'
   }
@@ -40,6 +70,7 @@ export const useNotesStore = defineStore('notes', () => {
     if (!(await client.unlock(password, meta))) return false
     await loadNotes()
     status.value = 'unlocked'
+    await sync()
     return true
   }
 
@@ -75,12 +106,29 @@ export const useNotesStore = defineStore('notes', () => {
   async function removeNote(id: string) {
     await deleteNote(id)
     notes.value = notes.value.filter((n) => n.id !== id)
+    if (remote.value) {
+      await pushNote({ id, env: { ...TOMBSTONE_ENV }, updatedAt: Date.now(), deleted: true })
+    }
   }
 
   async function persist(note: Note) {
     const env = await client.seal(JSON.stringify({ title: note.title, body: note.body }), note.id)
     await putNote({ id: note.id, updatedAt: note.updatedAt, env })
+    if (remote.value) await pushNote({ id: note.id, env, updatedAt: note.updatedAt })
   }
 
-  return { status, notes, init, setup, unlock, lock, addNote, updateNote, removeNote }
+  return {
+    status,
+    notes,
+    remote,
+    init,
+    enableSync,
+    sync,
+    setup,
+    unlock,
+    lock,
+    addNote,
+    updateNote,
+    removeNote,
+  }
 })
