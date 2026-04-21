@@ -38,15 +38,15 @@ export const useNotesStore = defineStore('notes', () => {
     status.value = (await getVaultMeta()) ? 'locked' : 'empty'
   }
 
-  // включаем синк после логина; на новом устройстве подтягиваем чужой vault
+  // включаем синк после логина; на новом устройстве подтягиваем чужой vault.
+  // смотрим на локальный vault, а не на status — иначе гонка с init()
   async function enableSync() {
     remote.value = true
-    if (status.value === 'empty') {
-      const meta = await pullVault()
-      if (meta) {
-        await setVaultMeta(meta)
-        status.value = 'locked'
-      }
+    if (await getVaultMeta()) return
+    const meta = await pullVault()
+    if (meta) {
+      await setVaultMeta(meta)
+      status.value = 'locked'
     }
   }
 
