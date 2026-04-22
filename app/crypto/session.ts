@@ -1,7 +1,10 @@
 import { fromBase64, toBase64, utf8 } from './base64'
 import type { ItemEnvelope } from './envelope'
 import { openString, sealString } from './envelope'
+import type { FileEnvelope, FileMeta } from './file'
+import { openFile, openFileMeta, sealFile } from './file'
 import { deriveMasterKey, KDF_ITERATIONS, SALT_BYTES } from './keys'
+import type { Bytes } from './types'
 
 const VERIFIER = 'secure-notes-vault'
 
@@ -18,6 +21,9 @@ export interface CryptoClient {
   unlock(password: string, params: VaultParams): Promise<boolean>
   seal(text: string, aad: string): Promise<ItemEnvelope>
   open(env: ItemEnvelope, aad: string): Promise<string>
+  sealFile(fileId: string, meta: FileMeta, data: Bytes): Promise<FileEnvelope>
+  openFileMeta(fileId: string, env: FileEnvelope): Promise<FileMeta>
+  openFile(fileId: string, env: FileEnvelope): Promise<{ meta: FileMeta; data: Bytes }>
   lock(): void
 }
 
@@ -52,6 +58,18 @@ export class VaultSession implements CryptoClient {
 
   async open(env: ItemEnvelope, aad: string): Promise<string> {
     return openString(this.requireKey(), env, utf8(aad))
+  }
+
+  sealFile(fileId: string, meta: FileMeta, data: Bytes): Promise<FileEnvelope> {
+    return sealFile(this.requireKey(), fileId, meta, data)
+  }
+
+  openFileMeta(fileId: string, env: FileEnvelope): Promise<FileMeta> {
+    return openFileMeta(this.requireKey(), fileId, env)
+  }
+
+  openFile(fileId: string, env: FileEnvelope): Promise<{ meta: FileMeta; data: Bytes }> {
+    return openFile(this.requireKey(), fileId, env)
   }
 
   lock(): void {

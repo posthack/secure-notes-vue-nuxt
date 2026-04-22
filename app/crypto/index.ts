@@ -1,4 +1,6 @@
 export { deriveMasterKey, KDF_ITERATIONS, SALT_BYTES } from './keys'
 export { openString, rewrapEnvelope, sealString } from './envelope'
 export type { ItemEnvelope } from './envelope'
+export { CHUNK_BYTES, openFile, openFileMeta, sealFile } from './file'
+export type { FileEnvelope, FileMeta } from './file'
 export { fromBase64, toBase64 } from './base64'
