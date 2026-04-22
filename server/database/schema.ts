@@ -71,3 +71,16 @@ export const note = sqliteTable('note', {
   updatedAt: integer('updated_at').notNull(),
   deleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
 })
+
+// meta — обёртка ключа и зашифрованное имя (отдаём в списке), content — чанки (тянем по запросу)
+export const file = sqliteTable('file', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  noteId: text('note_id').notNull(),
+  meta: text('meta').notNull(),
+  content: text('content').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  deleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
+})
