@@ -27,4 +27,7 @@ jobs:
 
       - run: npm test
 
+      # сборке БД не нужна, но пререндер открывает соединение — даём in-memory
       - run: npm run build
+        env:
+          DATABASE_URL: ':memory:'
