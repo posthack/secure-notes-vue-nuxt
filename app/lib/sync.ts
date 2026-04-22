@@ -1,5 +1,15 @@
-import type { ItemEnvelope } from '~/crypto'
-import { deleteNote, getAllNotes, putNote, type VaultMeta } from '~/lib/db'
+import type { FileEnvelope, ItemEnvelope } from '~/crypto'
+import {
+  deleteFile,
+  deleteNote,
+  getAllFiles,
+  getAllNotes,
+  getFile,
+  putFile,
+  putNote,
+  type StoredFile,
+  type VaultMeta,
+} from '~/lib/db'
 
 export interface SyncEntry {
   id: string
@@ -8,17 +18,24 @@ export interface SyncEntry {
   deleted?: boolean
 }
 
-// last-write-wins по updatedAt. push — что отдать серверу, pull — что применить локально
-export function mergeNotes(
-  local: SyncEntry[],
-  remote: SyncEntry[],
-): { push: SyncEntry[]; pull: SyncEntry[] } {
-  const byId = new Map<string, { l?: SyncEntry; r?: SyncEntry }>()
+interface Versioned {
+  id: string
+  updatedAt: number
+  deleted?: boolean
+}
+
+// last-write-wins по updatedAt. push — что отдать серверу, pull — что применить локально.
+// local и remote могут быть разной формы (у файлов метаданные ≠ полная запись)
+export function mergeEntries<L extends Versioned, R extends Versioned>(
+  local: L[],
+  remote: R[],
+): { push: L[]; pull: R[] } {
+  const byId = new Map<string, { l?: L; r?: R }>()
   for (const l of local) byId.set(l.id, { ...byId.get(l.id), l })
   for (const r of remote) byId.set(r.id, { ...byId.get(r.id), r })
 
-  const push: SyncEntry[] = []
-  const pull: SyncEntry[] = []
+  const push: L[] = []
+  const pull: R[] = []
   for (const { l, r } of byId.values()) {
     if (l && !r) push.push(l)
     else if (r && !l) pull.push(r)
@@ -29,6 +46,8 @@ export function mergeNotes(
   }
   return { push, pull }
 }
+
+export const mergeNotes = mergeEntries<SyncEntry, SyncEntry>
 
 export async function syncNotes(): Promise<boolean> {
   const remote = await $fetch<SyncEntry[]>('/api/notes')
@@ -53,6 +72,83 @@ export function pushNote(entry: SyncEntry): Promise<unknown> {
   return $fetch(`/api/notes/${entry.id}`, {
     method: 'PUT',
     body: { env: entry.env, updatedAt: entry.updatedAt, deleted: entry.deleted ?? false },
+  })
+}
+
+// метаданные файла: обёртка ключа и шифрованное имя, но без чанков
+type FileMetaEnv = Pick<FileEnvelope, 'v' | 'wrappedKey' | 'meta'>
+
+interface FileSyncMeta {
+  id: string
+  noteId: string
+  meta: FileMetaEnv
+  updatedAt: number
+  deleted?: boolean
+}
+
+// синкаем только метаданные файлов; чанки тянем лениво при открытии (downloadFileContent)
+export async function syncFiles(): Promise<boolean> {
+  const remote = await $fetch<FileSyncMeta[]>('/api/files')
+  const local = await getAllFiles()
+
+  const { push, pull } = mergeEntries(local, remote)
+  let changed = false
+
+  for (const r of pull) {
+    if (r.deleted) {
+      await deleteFile(r.id)
+    } else {
+      await putFile({
+        id: r.id,
+        noteId: r.noteId,
+        updatedAt: r.updatedAt,
+        env: { ...r.meta, chunks: [] },
+        content: false,
+      })
+    }
+    changed = true
+  }
+  // в push попадают только локально созданные файлы — они с содержимым
+  for (const l of push) {
+    if (l.content) await pushFile(l)
+  }
+
+  return changed
+}
+
+// подтягиваем чанки конкретного файла и дописываем их в локальную запись
+export async function downloadFileContent(id: string): Promise<StoredFile | undefined> {
+  const local = await getFile(id)
+  if (!local) return undefined
+  if (local.content) return local
+
+  const res = await $fetch<{ env: FileEnvelope }>(`/api/files/${id}`)
+  const updated: StoredFile = { ...local, env: res.env, content: true }
+  await putFile(updated)
+  return updated
+}
+
+export function pushFile(entry: StoredFile): Promise<unknown> {
+  return $fetch(`/api/files/${entry.id}`, {
+    method: 'PUT',
+    body: {
+      noteId: entry.noteId,
+      env: entry.env,
+      updatedAt: entry.updatedAt,
+      deleted: false,
+    },
+  })
+}
+
+export function pushFileTombstone(id: string, noteId: string): Promise<unknown> {
+  return $fetch(`/api/files/${id}`, {
+    method: 'PUT',
+    body: {
+      noteId,
+      env: { v: 1, wrappedKey: '', meta: { iv: '', ct: '' }, chunks: [] },
+      updatedAt: Date.now(),
+      deleted: true,
+    },
   })
 }
 
