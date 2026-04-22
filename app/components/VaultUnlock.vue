@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const store = useNotesStore()
+const demo = useRuntimeConfig().public.demo
 
 const password = ref('')
 const error = ref('')
@@ -37,6 +38,7 @@ async function submit() {
       </UFormField>
 
       <p v-if="error" class="text-sm text-error">{{ error }}</p>
+      <p v-if="demo" class="text-sm text-muted">демо-пароль: <code>demo</code></p>
 
       <UButton type="submit" :loading="busy" block>Разблокировать</UButton>
     </form>

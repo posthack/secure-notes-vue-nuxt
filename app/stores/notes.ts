@@ -14,6 +14,22 @@ import { pullVault, pushNote, pushVault, syncNotes } from '~/lib/sync'
 
 const TOMBSTONE_ENV = { v: 1, wrappedKey: '', iv: '', ct: '' } as const
 
+export const DEMO_PASSWORD = 'demo'
+const DEMO_NOTES = [
+  {
+    title: 'Wi-Fi на даче',
+    body: 'сеть: dacha-2g\nпароль: sosny-2019-lето',
+  },
+  {
+    title: 'Загранпаспорт',
+    body: '75 1234567, выдан 12.03.2022\nдействует до 12.03.2032',
+  },
+  {
+    title: 'Что купить на выходных',
+    body: 'краска для забора\nсаморезы 4x50\nдоски, 6 шт',
+  },
+]
+
 export interface Note {
   id: string
   title: string
@@ -62,6 +78,12 @@ export const useNotesStore = defineStore('notes', () => {
     if (remote.value) await pushVault(meta)
     notes.value = []
     status.value = 'unlocked'
+  }
+
+  // для витрины: хранилище с паролем demo и парой заметок
+  async function loadDemo() {
+    await setup(DEMO_PASSWORD)
+    for (const n of DEMO_NOTES) await addNote(n.title, n.body)
   }
 
   async function unlock(password: string): Promise<boolean> {
@@ -125,6 +147,7 @@ export const useNotesStore = defineStore('notes', () => {
     enableSync,
     sync,
     setup,
+    loadDemo,
     unlock,
     lock,
     addNote,

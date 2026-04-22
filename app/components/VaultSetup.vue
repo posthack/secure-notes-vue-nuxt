@@ -1,10 +1,20 @@
 <script setup lang="ts">
 const store = useNotesStore()
+const demo = useRuntimeConfig().public.demo
 
 const password = ref('')
 const confirm = ref('')
 const error = ref('')
 const busy = ref(false)
+
+async function tryDemo() {
+  busy.value = true
+  try {
+    await store.loadDemo()
+  } finally {
+    busy.value = false
+  }
+}
 
 async function submit() {
   error.value = ''
@@ -45,6 +55,10 @@ async function submit() {
       <p v-if="error" class="text-sm text-error">{{ error }}</p>
 
       <UButton type="submit" :loading="busy" block>Создать</UButton>
+
+      <UButton v-if="demo" variant="link" color="neutral" block @click="tryDemo">
+        или посмотреть на демо-данных
+      </UButton>
     </form>
   </UCard>
 </template>

@@ -16,6 +16,13 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2026-06-30',
 
+  runtimeConfig: {
+    public: {
+      // NUXT_PUBLIC_DEMO=true — витрина без бэкенда: синк выключен, есть кнопка демо-данных
+      demo: false,
+    },
+  },
+
   typescript: {
     strict: true,
     tsConfig: {

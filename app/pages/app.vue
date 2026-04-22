@@ -2,6 +2,8 @@
 useSeoMeta({ title: 'Хранилище — Secure Notes' })
 
 const store = useNotesStore()
+const demo = useRuntimeConfig().public.demo
+
 onMounted(() => {
   store.init()
 })
@@ -9,7 +11,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <AuthBar />
+    <AuthBar v-if="!demo" />
     <NotesView v-if="store.status === 'unlocked'" />
     <UContainer v-else class="flex justify-center py-16">
       <VaultSetup v-if="store.status === 'empty'" />
