@@ -1,5 +1,6 @@
-import type { ItemEnvelope } from '~/crypto'
+import type { FileEnvelope, FileMeta, ItemEnvelope } from '~/crypto'
 import type { CryptoClient, VaultParams } from '~/crypto/session'
+import type { Bytes } from '~/crypto/types'
 import type { CryptoRequest, CryptoResponse } from './rpc'
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void }
@@ -54,6 +55,18 @@ export class WorkerCryptoClient implements CryptoClient {
 
   open(env: ItemEnvelope, aad: string): Promise<string> {
     return this.call({ op: 'open', env, aad }) as Promise<string>
+  }
+
+  sealFile(fileId: string, meta: FileMeta, data: Bytes): Promise<FileEnvelope> {
+    return this.call({ op: 'sealFile', fileId, meta, data }) as Promise<FileEnvelope>
+  }
+
+  openFileMeta(fileId: string, env: FileEnvelope): Promise<FileMeta> {
+    return this.call({ op: 'openFileMeta', fileId, env }) as Promise<FileMeta>
+  }
+
+  openFile(fileId: string, env: FileEnvelope): Promise<{ meta: FileMeta; data: Bytes }> {
+    return this.call({ op: 'openFile', fileId, env }) as Promise<{ meta: FileMeta; data: Bytes }>
   }
 
   lock(): void {
