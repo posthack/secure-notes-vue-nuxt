@@ -16,6 +16,9 @@ jobs:
           node-version: 22
           cache: npm
 
+      # лок собран npm 11, дефолтный npm 10 в раннере читает его как рассинхрон
+      - run: npm i -g npm@11
+
       - run: npm ci
 
       - run: npm run lint
