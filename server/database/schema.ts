@@ -84,3 +84,29 @@ export const file = sqliteTable('file', {
   updatedAt: integer('updated_at').notNull(),
   deleted: integer('deleted', { mode: 'boolean' }).notNull().default(false),
 })
+
+// публичный ключ пользователя — по нему другие заворачивают dek, чтобы поделиться
+export const userKey = sqliteTable('user_key', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  publicKey: text('public_key').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+})
+
+// пошаренная заметка: шифртекст + dek под rsa получателя. сервер контент прочитать не может
+export const share = sqliteTable('share', {
+  id: text('id').primaryKey(),
+  noteId: text('note_id').notNull(),
+  ownerId: text('owner_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  recipientId: text('recipient_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  iv: text('iv').notNull(),
+  ct: text('ct').notNull(),
+  wrappedKey: text('wrapped_key').notNull(),
+  expiresAt: integer('expires_at'),
+  createdAt: integer('created_at').notNull(),
+})
