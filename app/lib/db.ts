@@ -6,6 +6,8 @@ export interface VaultMeta {
   salt: string
   iterations: number
   verifier: ItemEnvelope
+  publicKey?: string
+  privateKey?: ItemEnvelope
 }
 
 export interface StoredNote {
@@ -60,6 +62,10 @@ export async function setVaultMeta(meta: VaultMeta): Promise<void> {
 
 export async function getAllNotes(): Promise<StoredNote[]> {
   return (await db()).getAll('notes')
+}
+
+export async function getNote(id: string): Promise<StoredNote | undefined> {
+  return (await db()).get('notes', id)
 }
 
 export async function putNote(note: StoredNote): Promise<void> {

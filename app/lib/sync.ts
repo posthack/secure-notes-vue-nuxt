@@ -1,4 +1,4 @@
-import type { FileEnvelope, ItemEnvelope } from '~/crypto'
+import type { FileEnvelope, ItemEnvelope, SharePayload } from '~/crypto'
 import {
   deleteFile,
   deleteNote,
@@ -159,4 +159,53 @@ export function pushVault(meta: VaultMeta): Promise<unknown> {
 export async function pullVault(): Promise<VaultMeta | null> {
   const res = await $fetch<{ meta: VaultMeta } | null>('/api/vault')
   return res?.meta ?? null
+}
+
+// --- шаринг ---
+
+export interface IncomingShare extends SharePayload {
+  id: string
+  ownerEmail: string
+  expiresAt: number | null
+}
+
+export interface OutgoingShare {
+  id: string
+  noteId: string
+  recipientEmail: string
+  expiresAt: number | null
+  createdAt: number
+}
+
+export function publishPublicKey(publicKey: string): Promise<unknown> {
+  return $fetch('/api/pubkey', { method: 'PUT', body: { publicKey } })
+}
+
+// 404, если у получателя нет аккаунта или он не публиковал ключ
+export async function fetchPublicKey(email: string): Promise<string> {
+  const res = await $fetch<{ publicKey: string }>('/api/pubkey', { query: { email } })
+  return res.publicKey
+}
+
+export function createShare(body: {
+  recipientEmail: string
+  noteId: string
+  iv: string
+  ct: string
+  wrappedKey: string
+  expiresAt: number | null
+}): Promise<{ id: string }> {
+  return $fetch('/api/shares', { method: 'POST', body })
+}
+
+export function fetchIncomingShares(): Promise<IncomingShare[]> {
+  return $fetch<IncomingShare[]>('/api/shares/in')
+}
+
+export function fetchOutgoingShares(): Promise<OutgoingShare[]> {
+  return $fetch<OutgoingShare[]>('/api/shares/out')
+}
+
+export function deleteShare(id: string): Promise<unknown> {
+  return $fetch(`/api/shares/${id}`, { method: 'DELETE' })
 }
