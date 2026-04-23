@@ -8,6 +8,7 @@ import {
   getAllFiles,
   getAllNotes,
   getFile,
+  getNote,
   getVaultMeta,
   putFile,
   putNote,
@@ -15,7 +16,14 @@ import {
   type VaultMeta,
 } from '~/lib/db'
 import {
+  createShare,
+  deleteShare,
   downloadFileContent,
+  fetchIncomingShares,
+  fetchOutgoingShares,
+  fetchPublicKey,
+  type OutgoingShare,
+  publishPublicKey,
   pullVault,
   pushFile,
   pushFileTombstone,
@@ -63,6 +71,15 @@ export interface FileItem {
   updatedAt: number
 }
 
+// пошаренная мне заметка, уже расшифрованная своим приватным ключом
+export interface SharedNote {
+  id: string
+  ownerEmail: string
+  title: string
+  body: string
+  expiresAt: number | null
+}
+
 type Status = 'loading' | 'empty' | 'locked' | 'unlocked'
 
 let makeClient: () => CryptoClient = () => new WorkerCryptoClient()
@@ -75,6 +92,8 @@ export const useNotesStore = defineStore('notes', () => {
   const status = ref<Status>('loading')
   const notes = ref<Note[]>([])
   const files = ref<FileItem[]>([])
+  const incoming = ref<SharedNote[]>([])
+  const outgoing = ref<OutgoingShare[]>([])
   const remote = ref(false)
 
   async function init() {
@@ -97,13 +116,46 @@ export const useNotesStore = defineStore('notes', () => {
     if (!remote.value) return
     if (await syncNotes()) await loadNotes()
     if (await syncFiles()) await loadFiles()
+    await publishKey()
+    await loadShares()
+  }
+
+  async function publishKey() {
+    const meta = await getVaultMeta()
+    if (meta?.publicKey) await publishPublicKey(meta.publicKey)
+  }
+
+  async function loadShares() {
+    if (!remote.value || !client.unlocked) return
+    const [inc, out] = await Promise.all([fetchIncomingShares(), fetchOutgoingShares()])
+    const opened = await Promise.all(
+      inc.map(async (s) => {
+        try {
+          const data = JSON.parse(await client.openShared(s)) as { title: string; body: string }
+          return {
+            id: s.id,
+            ownerEmail: s.ownerEmail,
+            title: data.title,
+            body: data.body,
+            expiresAt: s.expiresAt,
+          }
+        } catch {
+          return null
+        }
+      }),
+    )
+    incoming.value = opened.filter((x): x is SharedNote => x !== null)
+    outgoing.value = out
   }
 
   async function setup(password: string) {
     const params = await client.setup(password)
     const meta: VaultMeta = { v: 1, ...params }
     await setVaultMeta(meta)
-    if (remote.value) await pushVault(meta)
+    if (remote.value) {
+      await pushVault(meta)
+      await publishKey()
+    }
     notes.value = []
     files.value = []
     status.value = 'unlocked'
@@ -119,6 +171,13 @@ export const useNotesStore = defineStore('notes', () => {
     const meta = await getVaultMeta()
     if (!meta) return false
     if (!(await client.unlock(password, meta))) return false
+    // старое хранилище без пары ключей — доводим и сохраняем
+    const migrated = await client.ensureKeypair()
+    if (migrated) {
+      const updated: VaultMeta = { ...meta, ...migrated }
+      await setVaultMeta(updated)
+      if (remote.value) await pushVault(updated)
+    }
     await loadNotes()
     await loadFiles()
     status.value = 'unlocked'
@@ -130,6 +189,8 @@ export const useNotesStore = defineStore('notes', () => {
     client.lock()
     notes.value = []
     files.value = []
+    incoming.value = []
+    outgoing.value = []
     status.value = 'locked'
   }
 
@@ -215,6 +276,30 @@ export const useNotesStore = defineStore('notes', () => {
     if (remote.value && f) await pushFileTombstone(id, f.noteId)
   }
 
+  // делимся снимком заметки: dek заворачиваем публичным ключом получателя.
+  // правки после шаринга к получателю не едут — надо поделиться заново
+  async function share(noteId: string, recipientEmail: string, expiresAt: number | null) {
+    if (!remote.value) throw new Error('шаринг работает только с аккаунтом')
+    const stored = await getNote(noteId)
+    if (!stored) throw new Error('заметка не найдена')
+    const pub = await fetchPublicKey(recipientEmail.trim().toLowerCase())
+    const payload = await client.prepareShare(noteId, stored.env, pub)
+    await createShare({
+      recipientEmail,
+      noteId,
+      iv: payload.iv,
+      ct: payload.ct,
+      wrappedKey: payload.wrappedKey,
+      expiresAt,
+    })
+    await loadShares()
+  }
+
+  async function revokeShare(id: string) {
+    await deleteShare(id)
+    outgoing.value = outgoing.value.filter((s) => s.id !== id)
+  }
+
   async function persist(note: Note) {
     const env = await client.seal(JSON.stringify({ title: note.title, body: note.body }), note.id)
     await putNote({ id: note.id, updatedAt: note.updatedAt, env })
@@ -225,6 +310,8 @@ export const useNotesStore = defineStore('notes', () => {
     status,
     notes,
     files,
+    incoming,
+    outgoing,
     remote,
     init,
     enableSync,
@@ -239,5 +326,8 @@ export const useNotesStore = defineStore('notes', () => {
     addFile,
     readFile,
     removeFile,
+    share,
+    revokeShare,
+    loadShares,
   }
 })
