@@ -1,5 +1,5 @@
-import type { FileEnvelope, FileMeta, ItemEnvelope } from '~/crypto'
-import type { CryptoClient, VaultParams } from '~/crypto/session'
+import type { FileEnvelope, FileMeta, ItemEnvelope, SharePayload } from '~/crypto'
+import type { CryptoClient, KeypairMaterial, VaultParams } from '~/crypto/session'
 import type { Bytes } from '~/crypto/types'
 import type { CryptoRequest, CryptoResponse } from './rpc'
 
@@ -67,6 +67,18 @@ export class WorkerCryptoClient implements CryptoClient {
 
   openFile(fileId: string, env: FileEnvelope): Promise<{ meta: FileMeta; data: Bytes }> {
     return this.call({ op: 'openFile', fileId, env }) as Promise<{ meta: FileMeta; data: Bytes }>
+  }
+
+  ensureKeypair(): Promise<KeypairMaterial | null> {
+    return this.call({ op: 'ensureKeypair' }) as Promise<KeypairMaterial | null>
+  }
+
+  prepareShare(noteId: string, env: ItemEnvelope, recipientPub: string): Promise<SharePayload> {
+    return this.call({ op: 'prepareShare', noteId, env, recipientPub }) as Promise<SharePayload>
+  }
+
+  openShared(share: SharePayload): Promise<string> {
+    return this.call({ op: 'openShared', share }) as Promise<string>
   }
 
   lock(): void {

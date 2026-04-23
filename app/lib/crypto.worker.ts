@@ -36,6 +36,15 @@ self.onmessage = async (e) => {
       case 'openFile':
         result = await session.openFile(req.fileId, req.env)
         break
+      case 'ensureKeypair':
+        result = await session.ensureKeypair()
+        break
+      case 'prepareShare':
+        result = await session.prepareShare(req.noteId, req.env, req.recipientPub)
+        break
+      case 'openShared':
+        result = await session.openShared(req.share)
+        break
       case 'lock':
         session.lock()
         break

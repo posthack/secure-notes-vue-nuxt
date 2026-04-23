@@ -1,4 +1,4 @@
-import type { FileEnvelope, FileMeta, ItemEnvelope } from '~/crypto'
+import type { FileEnvelope, FileMeta, ItemEnvelope, SharePayload } from '~/crypto'
 import type { VaultParams } from '~/crypto/session'
 
 export type CryptoRequest =
@@ -9,6 +9,9 @@ export type CryptoRequest =
   | { id: number; op: 'sealFile'; fileId: string; meta: FileMeta; data: Uint8Array }
   | { id: number; op: 'openFileMeta'; fileId: string; env: FileEnvelope }
   | { id: number; op: 'openFile'; fileId: string; env: FileEnvelope }
+  | { id: number; op: 'ensureKeypair' }
+  | { id: number; op: 'prepareShare'; noteId: string; env: ItemEnvelope; recipientPub: string }
+  | { id: number; op: 'openShared'; share: SharePayload }
   | { id: number; op: 'lock' }
 
 export type CryptoResponse =
