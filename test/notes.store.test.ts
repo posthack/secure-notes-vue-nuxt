@@ -63,4 +63,36 @@ describe('notes store', () => {
     await store.removeNote(id)
     expect(store.notes).toHaveLength(0)
   })
+
+  const fileBytes = new Uint8Array([1, 2, 3, 4, 5]) as Uint8Array<ArrayBuffer>
+
+  it('вложение шифруется, переживает lock/unlock и читается обратно', async () => {
+    const store = useNotesStore()
+    await store.setup('мастер')
+    const note = await store.addNote('с файлом', '')
+    await store.addFile(note.id, 'ключи.txt', 'text/plain', fileBytes)
+    expect(store.files).toHaveLength(1)
+    expect(store.files[0]?.name).toBe('ключи.txt')
+    expect(store.files[0]?.size).toBe(5)
+
+    store.lock()
+    expect(store.files).toHaveLength(0)
+
+    await store.unlock('мастер')
+    expect(store.files[0]?.name).toBe('ключи.txt')
+    const read = await store.readFile(store.files[0]!.id)
+    expect(read.data).toEqual(fileBytes)
+    expect(read.type).toBe('text/plain')
+  })
+
+  it('удаление заметки уносит её вложения', async () => {
+    const store = useNotesStore()
+    await store.setup('мастер')
+    const note = await store.addNote('a', '')
+    await store.addFile(note.id, 'a.bin', 'application/octet-stream', fileBytes)
+    expect(store.files).toHaveLength(1)
+
+    await store.removeNote(note.id)
+    expect(store.files).toHaveLength(0)
+  })
 })

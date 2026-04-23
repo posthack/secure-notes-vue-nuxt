@@ -3,14 +3,30 @@ import { ref } from 'vue'
 import type { CryptoClient } from '~/crypto/session'
 import { WorkerCryptoClient } from '~/lib/cryptoClient'
 import {
+  deleteFile,
   deleteNote,
+  getAllFiles,
   getAllNotes,
+  getFile,
   getVaultMeta,
+  putFile,
   putNote,
   setVaultMeta,
   type VaultMeta,
 } from '~/lib/db'
-import { pullVault, pushNote, pushVault, syncNotes } from '~/lib/sync'
+import {
+  downloadFileContent,
+  pullVault,
+  pushFile,
+  pushFileTombstone,
+  pushNote,
+  pushVault,
+  syncFiles,
+  syncNotes,
+} from '~/lib/sync'
+
+// разумный потолок для браузерного E2E — файл целиком проходит через память
+export const MAX_FILE_BYTES = 25 * 1024 * 1024
 
 const TOMBSTONE_ENV = { v: 1, wrappedKey: '', iv: '', ct: '' } as const
 
@@ -37,6 +53,16 @@ export interface Note {
   updatedAt: number
 }
 
+// в списке держим только метаданные; содержимое расшифровываем при скачивании
+export interface FileItem {
+  id: string
+  noteId: string
+  name: string
+  type: string
+  size: number
+  updatedAt: number
+}
+
 type Status = 'loading' | 'empty' | 'locked' | 'unlocked'
 
 let makeClient: () => CryptoClient = () => new WorkerCryptoClient()
@@ -48,6 +74,7 @@ export const useNotesStore = defineStore('notes', () => {
   const client = makeClient()
   const status = ref<Status>('loading')
   const notes = ref<Note[]>([])
+  const files = ref<FileItem[]>([])
   const remote = ref(false)
 
   async function init() {
@@ -69,6 +96,7 @@ export const useNotesStore = defineStore('notes', () => {
   async function sync() {
     if (!remote.value) return
     if (await syncNotes()) await loadNotes()
+    if (await syncFiles()) await loadFiles()
   }
 
   async function setup(password: string) {
@@ -77,6 +105,7 @@ export const useNotesStore = defineStore('notes', () => {
     await setVaultMeta(meta)
     if (remote.value) await pushVault(meta)
     notes.value = []
+    files.value = []
     status.value = 'unlocked'
   }
 
@@ -91,6 +120,7 @@ export const useNotesStore = defineStore('notes', () => {
     if (!meta) return false
     if (!(await client.unlock(password, meta))) return false
     await loadNotes()
+    await loadFiles()
     status.value = 'unlocked'
     await sync()
     return true
@@ -99,6 +129,7 @@ export const useNotesStore = defineStore('notes', () => {
   function lock() {
     client.lock()
     notes.value = []
+    files.value = []
     status.value = 'locked'
   }
 
@@ -131,6 +162,57 @@ export const useNotesStore = defineStore('notes', () => {
     if (remote.value) {
       await pushNote({ id, env: { ...TOMBSTONE_ENV }, updatedAt: Date.now(), deleted: true })
     }
+    // вложения заметки уносим вместе с ней
+    for (const f of files.value.filter((f) => f.noteId === id)) await removeFile(f.id)
+  }
+
+  async function loadFiles() {
+    const stored = await getAllFiles()
+    const items = stored.map(async (f) => {
+      const meta = await client.openFileMeta(f.id, f.env)
+      return {
+        id: f.id,
+        noteId: f.noteId,
+        name: meta.name,
+        type: meta.type,
+        size: meta.size,
+        updatedAt: f.updatedAt,
+      }
+    })
+    files.value = (await Promise.all(items)).sort((a, b) => b.updatedAt - a.updatedAt)
+  }
+
+  async function addFile(
+    noteId: string,
+    name: string,
+    type: string,
+    data: Uint8Array<ArrayBuffer>,
+  ) {
+    if (data.length > MAX_FILE_BYTES) throw new Error('файл слишком большой')
+    const id = crypto.randomUUID()
+    const updatedAt = Date.now()
+    const env = await client.sealFile(id, { name, type, size: data.length }, data)
+    await putFile({ id, noteId, updatedAt, env, content: true })
+    if (remote.value) await pushFile({ id, noteId, updatedAt, env, content: true })
+    files.value = [{ id, noteId, name, type, size: data.length, updatedAt }, ...files.value]
+  }
+
+  // расшифровка содержимого по требованию; на чужом устройстве сперва тянем чанки
+  async function readFile(
+    id: string,
+  ): Promise<{ name: string; type: string; data: Uint8Array<ArrayBuffer> }> {
+    let stored = await getFile(id)
+    if (stored && !stored.content && remote.value) stored = await downloadFileContent(id)
+    if (!stored) throw new Error('файл не найден')
+    const { meta, data } = await client.openFile(id, stored.env)
+    return { name: meta.name, type: meta.type, data }
+  }
+
+  async function removeFile(id: string) {
+    const f = files.value.find((f) => f.id === id)
+    await deleteFile(id)
+    files.value = files.value.filter((f) => f.id !== id)
+    if (remote.value && f) await pushFileTombstone(id, f.noteId)
   }
 
   async function persist(note: Note) {
@@ -142,6 +224,7 @@ export const useNotesStore = defineStore('notes', () => {
   return {
     status,
     notes,
+    files,
     remote,
     init,
     enableSync,
@@ -153,5 +236,8 @@ export const useNotesStore = defineStore('notes', () => {
     addNote,
     updateNote,
     removeNote,
+    addFile,
+    readFile,
+    removeFile,
   }
 })
