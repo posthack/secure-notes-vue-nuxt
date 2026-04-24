@@ -4,8 +4,16 @@ useSeoMeta({ title: 'Хранилище — Secure Notes' })
 const store = useNotesStore()
 const demo = useRuntimeConfig().public.demo
 
+const EVENTS = ['pointerdown', 'keydown', 'scroll'] as const
+const onActivity = () => store.touch()
+
 onMounted(() => {
   store.init()
+  for (const e of EVENTS) window.addEventListener(e, onActivity, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  for (const e of EVENTS) window.removeEventListener(e, onActivity)
 })
 </script>
 

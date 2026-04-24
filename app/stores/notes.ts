@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { CryptoClient } from '~/crypto/session'
+import { AutoLock } from '~/lib/autolock'
 import { WorkerCryptoClient } from '~/lib/cryptoClient'
 import {
   deleteFile,
@@ -35,6 +36,9 @@ import {
 
 // разумный потолок для браузерного E2E — файл целиком проходит через память
 export const MAX_FILE_BYTES = 25 * 1024 * 1024
+
+// авто-лок после простоя — ключи не должны висеть в памяти забытой вкладки
+export const AUTO_LOCK_MS = 5 * 60_000
 
 const TOMBSTONE_ENV = { v: 1, wrappedKey: '', iv: '', ct: '' } as const
 
@@ -95,6 +99,12 @@ export const useNotesStore = defineStore('notes', () => {
   const incoming = ref<SharedNote[]>([])
   const outgoing = ref<OutgoingShare[]>([])
   const remote = ref(false)
+  const autolock = new AutoLock(() => lock(), AUTO_LOCK_MS)
+
+  // трогаем на активности пользователя; только в браузере, чтобы не арминг в тестах/ssr
+  function touch() {
+    if (import.meta.client && status.value === 'unlocked') autolock.touch()
+  }
 
   async function init() {
     status.value = (await getVaultMeta()) ? 'locked' : 'empty'
@@ -159,6 +169,7 @@ export const useNotesStore = defineStore('notes', () => {
     notes.value = []
     files.value = []
     status.value = 'unlocked'
+    touch()
   }
 
   // для витрины: хранилище с паролем demo и парой заметок
@@ -181,11 +192,13 @@ export const useNotesStore = defineStore('notes', () => {
     await loadNotes()
     await loadFiles()
     status.value = 'unlocked'
+    touch()
     await sync()
     return true
   }
 
   function lock() {
+    autolock.stop()
     client.lock()
     notes.value = []
     files.value = []
@@ -329,5 +342,6 @@ export const useNotesStore = defineStore('notes', () => {
     share,
     revokeShare,
     loadShares,
+    touch,
   }
 })
