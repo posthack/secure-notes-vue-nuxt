@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { generatePassword } from '~/lib/password'
+
 const store = useNotesStore()
 const demo = useRuntimeConfig().public.demo
 
@@ -6,6 +8,15 @@ const password = ref('')
 const confirm = ref('')
 const error = ref('')
 const busy = ref(false)
+const reveal = ref(false)
+
+// сгенерировали — сразу показываем и проставляем в оба поля, чтобы человек его сохранил
+function generate() {
+  const p = generatePassword(20)
+  password.value = p
+  confirm.value = p
+  reveal.value = true
+}
 
 async function tryDemo() {
   busy.value = true
@@ -46,11 +57,37 @@ async function submit() {
 
     <form class="space-y-4" @submit.prevent="submit">
       <UFormField label="Мастер-пароль">
-        <UInput v-model="password" type="password" autocomplete="new-password" class="w-full" />
+        <UInput
+          v-model="password"
+          :type="reveal ? 'text' : 'password'"
+          autocomplete="new-password"
+          class="w-full"
+        />
       </UFormField>
       <UFormField label="Ещё раз">
-        <UInput v-model="confirm" type="password" autocomplete="new-password" class="w-full" />
+        <UInput
+          v-model="confirm"
+          :type="reveal ? 'text' : 'password'"
+          autocomplete="new-password"
+          class="w-full"
+        />
       </UFormField>
+
+      <div class="flex items-center gap-2 text-sm">
+        <UButton
+          type="button"
+          icon="i-lucide-dices"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          @click="generate"
+        >
+          Сгенерировать
+        </UButton>
+        <UButton type="button" size="xs" variant="ghost" color="neutral" @click="reveal = !reveal">
+          {{ reveal ? 'скрыть' : 'показать' }}
+        </UButton>
+      </div>
 
       <p v-if="error" class="text-sm text-error">{{ error }}</p>
 
