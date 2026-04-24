@@ -3,6 +3,7 @@ import { MAX_FILE_BYTES, type FileItem, type Note } from '~/stores/notes'
 
 const store = useNotesStore()
 
+const tab = ref<'mine' | 'shared'>('mine')
 const selectedId = ref<string | null>(store.notes[0]?.id ?? null)
 const draft = reactive({ title: '', body: '' })
 const dirty = ref(false)
@@ -10,8 +11,41 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const fileError = ref('')
 const busy = ref(false)
 
+const shareEmail = ref('')
+const shareExpiry = ref('0')
+const shareError = ref('')
+const sharing = ref(false)
+
 const selected = computed(() => store.notes.find((n) => n.id === selectedId.value) ?? null)
 const attachments = computed(() => store.files.filter((f) => f.noteId === selectedId.value))
+const noteShares = computed(() => store.outgoing.filter((s) => s.noteId === selectedId.value))
+
+const EXPIRY: Record<string, number> = { '1': 1, '7': 7, '30': 30 }
+
+async function doShare() {
+  if (!selected.value || !shareEmail.value.trim()) return
+  shareError.value = ''
+  sharing.value = true
+  try {
+    const days = EXPIRY[shareExpiry.value]
+    const expiresAt = days ? Date.now() + days * 86_400_000 : null
+    await store.share(selected.value.id, shareEmail.value, expiresAt)
+    shareEmail.value = ''
+  } catch (e) {
+    shareError.value =
+      (e as { statusCode?: number }).statusCode === 404
+        ? 'у получателя нет аккаунта или ключа'
+        : 'поделиться не вышло'
+  } finally {
+    sharing.value = false
+  }
+}
+
+function expiryLabel(ts: number | null) {
+  if (!ts) return 'без срока'
+  const left = Math.ceil((ts - Date.now()) / 86_400_000)
+  return left > 0 ? `ещё ${left} дн.` : 'истёк'
+}
 
 watch(
   selected,
@@ -91,15 +125,34 @@ async function download(f: FileItem) {
 <template>
   <div class="flex flex-col h-[calc(100vh-4rem)]">
     <div class="flex items-center gap-3 px-4 h-14 border-b border-default">
-      <h1 class="font-semibold">Заметки</h1>
+      <button
+        class="font-semibold"
+        :class="tab === 'mine' ? '' : 'text-muted'"
+        @click="tab = 'mine'"
+      >
+        Заметки
+      </button>
+      <button
+        v-if="store.remote"
+        class="font-semibold flex items-center gap-1"
+        :class="tab === 'shared' ? '' : 'text-muted'"
+        @click="tab = 'shared'"
+      >
+        Поделились со мной
+        <span v-if="store.incoming.length" class="text-xs text-primary">{{
+          store.incoming.length
+        }}</span>
+      </button>
       <div class="flex-1" />
-      <UButton icon="i-lucide-plus" size="sm" @click="create">Новая</UButton>
+      <template v-if="tab === 'mine'">
+        <UButton icon="i-lucide-plus" size="sm" @click="create">Новая</UButton>
+      </template>
       <UButton icon="i-lucide-lock" size="sm" color="neutral" variant="ghost" @click="store.lock()">
         Запереть
       </UButton>
     </div>
 
-    <div class="flex flex-1 min-h-0 flex-col md:flex-row">
+    <div v-if="tab === 'mine'" class="flex flex-1 min-h-0 flex-col md:flex-row">
       <aside
         class="md:w-72 shrink-0 border-b md:border-b-0 md:border-r border-default overflow-y-auto"
       >
@@ -183,6 +236,55 @@ async function download(f: FileItem) {
           </p>
         </div>
 
+        <div class="border-t border-default pt-3">
+          <div class="text-sm font-medium text-muted mb-2">Поделиться</div>
+          <p v-if="!store.remote" class="text-xs text-muted">
+            Нужен аккаунт: заметка заворачивается публичным ключом получателя.
+          </p>
+          <template v-else>
+            <form class="flex flex-wrap items-center gap-2" @submit.prevent="doShare">
+              <UInput v-model="shareEmail" type="email" placeholder="почта получателя" size="sm" />
+              <USelect
+                v-model="shareExpiry"
+                size="sm"
+                :items="[
+                  { label: 'без срока', value: '0' },
+                  { label: '1 день', value: '1' },
+                  { label: '7 дней', value: '7' },
+                  { label: '30 дней', value: '30' },
+                ]"
+              />
+              <UButton type="submit" size="sm" :loading="sharing" :disabled="!shareEmail.trim()">
+                Поделиться
+              </UButton>
+              <span v-if="shareError" class="text-xs text-error">{{ shareError }}</span>
+            </form>
+            <ul v-if="noteShares.length" class="flex flex-col gap-1 mt-2">
+              <li
+                v-for="s in noteShares"
+                :key="s.id"
+                class="flex items-center gap-2 text-sm rounded px-2 py-1 hover:bg-elevated"
+              >
+                <UIcon name="i-lucide-user" class="text-muted shrink-0" />
+                <span class="truncate">{{ s.recipientEmail }}</span>
+                <span class="text-muted text-xs shrink-0">{{ expiryLabel(s.expiresAt) }}</span>
+                <div class="flex-1" />
+                <UButton
+                  icon="i-lucide-x"
+                  size="xs"
+                  variant="ghost"
+                  color="error"
+                  @click="store.revokeShare(s.id)"
+                />
+              </li>
+            </ul>
+            <p class="text-xs text-muted mt-1">
+              Уходит снимок заметки. Поправите — поделитесь заново, у получателя останется старая
+              версия.
+            </p>
+          </template>
+        </div>
+
         <div class="flex items-center gap-2">
           <UButton :disabled="!dirty" @click="save">Сохранить</UButton>
           <span v-if="dirty" class="text-sm text-muted">есть несохранённые правки</span>
@@ -199,6 +301,27 @@ async function download(f: FileItem) {
       <section v-else class="flex-1 flex items-center justify-center text-muted">
         Выберите заметку или создайте новую
       </section>
+    </div>
+
+    <div v-else class="flex-1 min-h-0 overflow-y-auto p-4">
+      <p v-if="!store.incoming.length" class="text-sm text-muted">
+        С вами пока ничем не поделились.
+      </p>
+      <div class="flex flex-col gap-3 max-w-2xl">
+        <article
+          v-for="s in store.incoming"
+          :key="s.id"
+          class="border border-default rounded-lg p-4"
+        >
+          <div class="flex items-baseline gap-2 mb-1">
+            <h2 class="font-semibold truncate">{{ s.title || 'Без названия' }}</h2>
+            <div class="flex-1" />
+            <span class="text-xs text-muted shrink-0">{{ expiryLabel(s.expiresAt) }}</span>
+          </div>
+          <p class="text-xs text-muted mb-2">от {{ s.ownerEmail }}</p>
+          <p class="text-sm whitespace-pre-wrap">{{ s.body }}</p>
+        </article>
+      </div>
     </div>
   </div>
 </template>
