@@ -171,7 +171,7 @@ async function download(f: FileItem) {
         </button>
       </aside>
 
-      <section v-if="selected" class="flex-1 min-h-0 flex flex-col p-4 gap-3">
+      <section v-if="selected" class="flex-1 min-h-0 overflow-y-auto flex flex-col p-4 gap-3">
         <UInput
           v-model="draft.title"
           placeholder="Заголовок"
@@ -183,9 +183,9 @@ async function download(f: FileItem) {
           v-model="draft.body"
           placeholder="Текст заметки…"
           variant="none"
-          :rows="14"
+          :rows="8"
           autoresize
-          class="flex-1 px-0"
+          class="px-0"
           @update:model-value="dirty = true"
         />
         <div class="border-t border-default pt-3">
