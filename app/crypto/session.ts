@@ -80,10 +80,16 @@ export class VaultSession implements CryptoClient {
       return false
     }
     this.key = key
+    // пара ключей нужна только для шаринга; битая/несовместимая не должна мешать
+    // открыть хранилище. отвалится — шаринг недоступен, ensureKeypair пересоздаст
     if (params.publicKey && params.privateKey) {
-      this.keypair = {
-        publicKey: await importPublicKey(params.publicKey),
-        privateKey: await openPrivateKey(key, params.privateKey),
+      try {
+        this.keypair = {
+          publicKey: await importPublicKey(params.publicKey),
+          privateKey: await openPrivateKey(key, params.privateKey),
+        }
+      } catch {
+        this.keypair = null
       }
     }
     return true

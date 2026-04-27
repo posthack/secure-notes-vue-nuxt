@@ -124,8 +124,9 @@ export const useNotesStore = defineStore('notes', () => {
 
   async function sync() {
     if (!remote.value) return
-    if (await syncNotes()) await loadNotes()
-    if (await syncFiles()) await loadFiles()
+    // loadNotes/loadFiles расшифровывают через воркер — только когда открыто
+    if ((await syncNotes()) && client.unlocked) await loadNotes()
+    if ((await syncFiles()) && client.unlocked) await loadFiles()
     await publishKey()
     await loadShares()
   }
@@ -209,11 +210,18 @@ export const useNotesStore = defineStore('notes', () => {
 
   async function loadNotes() {
     const stored = await getAllNotes()
-    const open = stored.map(async (n) => {
-      const data = JSON.parse(await client.open(n.env, n.id)) as { title: string; body: string }
-      return { id: n.id, title: data.title, body: data.body, updatedAt: n.updatedAt }
+    const open = stored.map(async (n): Promise<Note | null> => {
+      try {
+        const data = JSON.parse(await client.open(n.env, n.id)) as { title: string; body: string }
+        return { id: n.id, title: data.title, body: data.body, updatedAt: n.updatedAt }
+      } catch {
+        // битую запись пропускаем, а не роняем всю разблокировку
+        return null
+      }
     })
-    notes.value = (await Promise.all(open)).sort((a, b) => b.updatedAt - a.updatedAt)
+    notes.value = (await Promise.all(open))
+      .filter((n): n is Note => n !== null)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
   }
 
   async function addNote(title: string, body: string): Promise<Note> {
@@ -242,18 +250,24 @@ export const useNotesStore = defineStore('notes', () => {
 
   async function loadFiles() {
     const stored = await getAllFiles()
-    const items = stored.map(async (f) => {
-      const meta = await client.openFileMeta(f.id, f.env)
-      return {
-        id: f.id,
-        noteId: f.noteId,
-        name: meta.name,
-        type: meta.type,
-        size: meta.size,
-        updatedAt: f.updatedAt,
+    const items = stored.map(async (f): Promise<FileItem | null> => {
+      try {
+        const meta = await client.openFileMeta(f.id, f.env)
+        return {
+          id: f.id,
+          noteId: f.noteId,
+          name: meta.name,
+          type: meta.type,
+          size: meta.size,
+          updatedAt: f.updatedAt,
+        }
+      } catch {
+        return null
       }
     })
-    files.value = (await Promise.all(items)).sort((a, b) => b.updatedAt - a.updatedAt)
+    files.value = (await Promise.all(items))
+      .filter((f): f is FileItem => f !== null)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
   }
 
   async function addFile(

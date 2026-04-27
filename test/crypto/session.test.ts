@@ -30,4 +30,17 @@ describe('VaultSession', () => {
     expect(s.unlocked).toBe(false)
     await expect(s.seal('x', 'note:1')).rejects.toThrow()
   })
+
+  // битая пара ключей нужна только для шаринга и не должна мешать открыть хранилище
+  it('unlock открывает хранилище даже с повреждённым приватным ключом', async () => {
+    const meta = await new VaultSession().setup('пароль')
+    meta.privateKey!.ct = meta.privateKey!.ct.slice(0, -4) + 'AAAA'
+
+    const s = new VaultSession()
+    expect(await s.unlock('пароль', meta)).toBe(true)
+    expect(s.unlocked).toBe(true)
+    // заметки читаются, несмотря на битую пару
+    const env = await s.seal('тело', 'note:1')
+    expect(await s.open(env, 'note:1')).toBe('тело')
+  })
 })
