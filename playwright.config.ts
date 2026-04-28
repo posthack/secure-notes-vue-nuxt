@@ -4,7 +4,10 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
-  expect: { timeout: 10_000 },
+  // /app это spa, dev-сервер компилит его на первый заход — на холодном ci
+  // это дольше, поэтому запас по таймауту и ретрай на случай медленного старта
+  expect: { timeout: 15_000 },
+  retries: process.env.CI ? 2 : 0,
   fullyParallel: true,
   reporter: 'list',
   use: {
