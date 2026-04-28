@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
+import { fromBase64, toBase64 } from '~/crypto/base64'
 import { sealString } from '~/crypto/envelope'
 import { deriveMasterKey } from '~/crypto/keys'
 import {
@@ -61,8 +62,9 @@ describe('пара ключей и шаринг', () => {
     const bob = await generateKeypair()
     const noteEnv = await sealString(master, 'x', new TextEncoder().encode('n'))
     const share = await prepareShare(master, 'n', noteEnv, bob.publicKey)
-    share.wrappedKey =
-      share.wrappedKey.slice(0, -3) + (share.wrappedKey.endsWith('A') ? 'B' : 'A') + '=='
+    const wrapped = fromBase64(share.wrappedKey)
+    wrapped[0] ^= 0xff
+    share.wrappedKey = toBase64(wrapped)
     await expect(openSharedNote(bob.privateKey, share)).rejects.toThrow()
   })
 
