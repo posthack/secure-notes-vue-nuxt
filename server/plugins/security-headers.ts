@@ -49,6 +49,10 @@ function toHtml(body: unknown): string {
 }
 
 export default defineNitroPlugin((nitro) => {
+  // в деве vite тянет hmr через eval и websocket — строгий csp его рубит.
+  // заголовок нужен на проде, там и ставим
+  if (import.meta.dev) return
+
   nitro.hooks.hook('beforeResponse', (event, res: { body?: unknown }) => {
     setResponseHeader(event, 'X-Content-Type-Options', 'nosniff')
     setResponseHeader(event, 'Referrer-Policy', 'no-referrer')
