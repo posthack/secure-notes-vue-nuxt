@@ -14,11 +14,11 @@ test('заметка переживает lock/unlock, неверный паро
   await vaultPw.nth(1).fill(PW)
   await page.getByRole('button', { name: 'Создать' }).click()
 
-  // создаём и сохраняем заметку
+  // создаём заметку — сохраняется автоматически, ждём индикатор
   await page.getByRole('button', { name: 'Новая' }).click()
   await page.getByPlaceholder('Заголовок').fill('e2e заметка')
-  await page.getByPlaceholder('Текст заметки…').fill('секрет из e2e')
-  await page.getByRole('button', { name: 'Сохранить' }).click()
+  await page.getByPlaceholder('Начните писать…').fill('секрет из e2e')
+  await expect(page.getByText('сохранено')).toBeVisible()
 
   await page.getByRole('button', { name: 'Запереть' }).click()
   await expect(page.getByText('Хранилище заперто')).toBeVisible()
