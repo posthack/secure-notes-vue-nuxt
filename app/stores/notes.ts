@@ -99,6 +99,7 @@ export const useNotesStore = defineStore('notes', () => {
   const incoming = ref<SharedNote[]>([])
   const outgoing = ref<OutgoingShare[]>([])
   const remote = ref(false)
+  const syncStatus = ref<'idle' | 'syncing' | 'synced' | 'error'>('idle')
   const autolock = new AutoLock(() => lock(), AUTO_LOCK_MS)
 
   // трогаем на активности пользователя; только в браузере, чтобы не арминг в тестах/ssr
@@ -124,11 +125,17 @@ export const useNotesStore = defineStore('notes', () => {
 
   async function sync() {
     if (!remote.value) return
-    // loadNotes/loadFiles расшифровывают через воркер — только когда открыто
-    if ((await syncNotes()) && client.unlocked) await loadNotes()
-    if ((await syncFiles()) && client.unlocked) await loadFiles()
-    await publishKey()
-    await loadShares()
+    syncStatus.value = 'syncing'
+    try {
+      // loadNotes/loadFiles расшифровывают через воркер — только когда открыто
+      if ((await syncNotes()) && client.unlocked) await loadNotes()
+      if ((await syncFiles()) && client.unlocked) await loadFiles()
+      await publishKey()
+      await loadShares()
+      syncStatus.value = 'synced'
+    } catch {
+      syncStatus.value = 'error'
+    }
   }
 
   async function publishKey() {
@@ -340,6 +347,7 @@ export const useNotesStore = defineStore('notes', () => {
     incoming,
     outgoing,
     remote,
+    syncStatus,
     init,
     enableSync,
     sync,

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const route = useRoute()
+
 useHead({
   htmlAttrs: { lang: 'ru' },
   meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
@@ -19,6 +21,9 @@ useSeoMeta({
       </template>
 
       <template #right>
+        <ClientOnly>
+          <AppAccount v-if="route.path === '/app'" />
+        </ClientOnly>
         <UColorModeButton />
       </template>
     </UHeader>
