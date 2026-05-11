@@ -24,6 +24,9 @@ async function submit() {
   <UCard class="w-full max-w-md">
     <template #header>
       <h1 class="text-lg font-semibold">Хранилище заперто</h1>
+      <p class="text-sm text-muted mt-1">
+        Ключи не хранятся на устройстве. Введите мастер-пароль, чтобы расшифровать заметки.
+      </p>
     </template>
 
     <form class="space-y-4" @submit.prevent="submit">
