@@ -165,164 +165,169 @@ async function confirmDelete(close: () => void) {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center gap-3 px-6 h-14 shrink-0 border-b border-default">
-      <span class="text-xs text-muted">
-        {{ saveState === 'saving' ? 'сохранение…' : 'сохранено' }}
-      </span>
-      <div class="flex-1" />
+    <div class="shrink-0 border-b border-default">
+      <div class="max-w-5xl flex items-center gap-2 px-8 h-14">
+        <span class="text-xs text-muted">
+          {{ saveState === 'saving' ? 'сохранение…' : 'сохранено' }}
+        </span>
+        <div class="flex-1" />
 
-      <UPopover>
-        <UButton
-          icon="i-lucide-paperclip"
-          size="sm"
-          color="neutral"
-          variant="ghost"
-          aria-label="Вложения"
-        />
-        <template #content>
-          <div class="p-3 w-72 space-y-2">
-            <input ref="fileInput" type="file" class="hidden" @change="onPick" />
-            <UButton
-              icon="i-lucide-paperclip"
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              block
-              :loading="attaching"
-              @click="fileInput?.click()"
-            >
-              Прикрепить файл
-            </UButton>
-            <p v-if="fileError" class="text-xs text-error">{{ fileError }}</p>
-            <ul v-if="attachments.length" class="flex flex-col gap-1">
-              <li
-                v-for="f in attachments"
-                :key="f.id"
-                class="flex items-center gap-2 text-sm rounded px-2 py-1 hover:bg-elevated"
+        <UPopover>
+          <UButton
+            icon="i-lucide-paperclip"
+            size="sm"
+            color="neutral"
+            variant="ghost"
+            aria-label="Вложения"
+          />
+          <template #content>
+            <div class="p-3 w-72 space-y-2">
+              <input ref="fileInput" type="file" class="hidden" @change="onPick" />
+              <UButton
+                icon="i-lucide-paperclip"
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                block
+                :loading="attaching"
+                @click="fileInput?.click()"
               >
-                <UIcon name="i-lucide-file" class="text-muted shrink-0" />
-                <button class="truncate text-left hover:underline" @click="download(f)">
-                  {{ f.name }}
-                </button>
-                <span class="text-muted text-xs shrink-0">{{ humanSize(f.size) }}</span>
-                <div class="flex-1" />
-                <UButton
-                  icon="i-lucide-download"
-                  size="xs"
-                  variant="ghost"
-                  color="neutral"
-                  @click="download(f)"
-                />
-                <UButton
-                  icon="i-lucide-x"
-                  size="xs"
-                  variant="ghost"
-                  color="error"
-                  @click="store.removeFile(f.id)"
-                />
-              </li>
-            </ul>
-            <p v-else class="text-xs text-muted">Пока ничего не прикреплено</p>
-          </div>
-        </template>
-      </UPopover>
-
-      <UPopover>
-        <UButton
-          icon="i-lucide-share-2"
-          size="sm"
-          color="neutral"
-          variant="ghost"
-          aria-label="Поделиться"
-        />
-        <template #content>
-          <div class="p-3 w-72 space-y-2">
-            <p v-if="!store.remote" class="text-xs text-muted">Нужен аккаунт для шаринга</p>
-            <template v-else>
-              <form class="flex flex-col gap-2" @submit.prevent="doShare">
-                <UInput
-                  v-model="shareEmail"
-                  type="email"
-                  placeholder="почта получателя"
-                  size="sm"
-                  class="w-full"
-                />
-                <USelect
-                  v-model="shareExpiry"
-                  size="sm"
-                  class="w-full"
-                  :items="[
-                    { label: 'без срока', value: '0' },
-                    { label: '1 день', value: '1' },
-                    { label: '7 дней', value: '7' },
-                    { label: '30 дней', value: '30' },
-                  ]"
-                />
-                <UButton
-                  type="submit"
-                  size="sm"
-                  :loading="sharing"
-                  :disabled="!shareEmail.trim()"
-                  block
-                >
-                  Поделиться
-                </UButton>
-                <p v-if="shareError" class="text-xs text-error">{{ shareError }}</p>
-              </form>
-              <ul v-if="noteShares.length" class="flex flex-col gap-1">
+                Прикрепить файл
+              </UButton>
+              <p v-if="fileError" class="text-xs text-error">{{ fileError }}</p>
+              <ul v-if="attachments.length" class="flex flex-col gap-1">
                 <li
-                  v-for="s in noteShares"
-                  :key="s.id"
+                  v-for="f in attachments"
+                  :key="f.id"
                   class="flex items-center gap-2 text-sm rounded px-2 py-1 hover:bg-elevated"
                 >
-                  <UIcon name="i-lucide-user" class="text-muted shrink-0" />
-                  <span class="truncate">{{ s.recipientEmail }}</span>
-                  <span class="text-muted text-xs shrink-0">{{ expiryLabel(s.expiresAt) }}</span>
+                  <UIcon name="i-lucide-file" class="text-muted shrink-0" />
+                  <button class="truncate text-left hover:underline" @click="download(f)">
+                    {{ f.name }}
+                  </button>
+                  <span class="text-muted text-xs shrink-0">{{ humanSize(f.size) }}</span>
                   <div class="flex-1" />
+                  <UButton
+                    icon="i-lucide-download"
+                    size="xs"
+                    variant="ghost"
+                    color="neutral"
+                    @click="download(f)"
+                  />
                   <UButton
                     icon="i-lucide-x"
                     size="xs"
                     variant="ghost"
                     color="error"
-                    @click="store.revokeShare(s.id)"
+                    @click="store.removeFile(f.id)"
                   />
                 </li>
               </ul>
-              <p class="text-xs text-muted">Уходит снимок заметки. Поправите — поделитесь заново</p>
-            </template>
-          </div>
-        </template>
-      </UPopover>
-
-      <UPopover>
-        <UButton
-          icon="i-lucide-trash-2"
-          size="sm"
-          color="error"
-          variant="ghost"
-          aria-label="Удалить"
-        />
-        <template #content="{ close }">
-          <div class="p-3 w-56 space-y-3">
-            <p class="text-sm">Удалить заметку?</p>
-            <div class="flex gap-2">
-              <UButton size="xs" color="error" @click="confirmDelete(close)">Удалить</UButton>
-              <UButton size="xs" variant="ghost" color="neutral" @click="close">Отмена</UButton>
+              <p v-else class="text-xs text-muted">Пока ничего не прикреплено</p>
             </div>
-          </div>
-        </template>
-      </UPopover>
+          </template>
+        </UPopover>
+
+        <UPopover>
+          <UButton
+            icon="i-lucide-share-2"
+            size="sm"
+            color="neutral"
+            variant="ghost"
+            aria-label="Поделиться"
+          />
+          <template #content>
+            <div class="p-3 w-72 space-y-2">
+              <p v-if="!store.remote" class="text-xs text-muted">Нужен аккаунт для шаринга</p>
+              <template v-else>
+                <form class="flex flex-col gap-2" @submit.prevent="doShare">
+                  <UInput
+                    v-model="shareEmail"
+                    type="email"
+                    placeholder="почта получателя"
+                    size="sm"
+                    class="w-full"
+                  />
+                  <USelect
+                    v-model="shareExpiry"
+                    size="sm"
+                    class="w-full"
+                    :items="[
+                      { label: 'без срока', value: '0' },
+                      { label: '1 день', value: '1' },
+                      { label: '7 дней', value: '7' },
+                      { label: '30 дней', value: '30' },
+                    ]"
+                  />
+                  <UButton
+                    type="submit"
+                    size="sm"
+                    :loading="sharing"
+                    :disabled="!shareEmail.trim()"
+                    block
+                  >
+                    Поделиться
+                  </UButton>
+                  <p v-if="shareError" class="text-xs text-error">{{ shareError }}</p>
+                </form>
+                <ul v-if="noteShares.length" class="flex flex-col gap-1">
+                  <li
+                    v-for="s in noteShares"
+                    :key="s.id"
+                    class="flex items-center gap-2 text-sm rounded px-2 py-1 hover:bg-elevated"
+                  >
+                    <UIcon name="i-lucide-user" class="text-muted shrink-0" />
+                    <span class="truncate">{{ s.recipientEmail }}</span>
+                    <span class="text-muted text-xs shrink-0">{{ expiryLabel(s.expiresAt) }}</span>
+                    <div class="flex-1" />
+                    <UButton
+                      icon="i-lucide-x"
+                      size="xs"
+                      variant="ghost"
+                      color="error"
+                      @click="store.revokeShare(s.id)"
+                    />
+                  </li>
+                </ul>
+                <p class="text-xs text-muted">
+                  Уходит снимок заметки. Поправите — поделитесь заново
+                </p>
+              </template>
+            </div>
+          </template>
+        </UPopover>
+
+        <UPopover>
+          <UButton
+            icon="i-lucide-trash-2"
+            size="sm"
+            color="error"
+            variant="ghost"
+            aria-label="Удалить"
+          />
+          <template #content="{ close }">
+            <div class="p-3 w-56 space-y-3">
+              <p class="text-sm">Удалить заметку?</p>
+              <div class="flex gap-2">
+                <UButton size="xs" color="error" @click="confirmDelete(close)">Удалить</UButton>
+                <UButton size="xs" variant="ghost" color="neutral" @click="close">Отмена</UButton>
+              </div>
+            </div>
+          </template>
+        </UPopover>
+      </div>
     </div>
 
-    <div class="flex-1 min-h-0 overflow-y-auto px-6 py-4">
-      <div class="max-w-[68ch] mx-auto flex flex-col gap-3">
+    <div class="flex-1 min-h-0 overflow-y-auto">
+      <div class="max-w-5xl flex flex-col gap-4 px-8 py-8">
         <UInput
           ref="titleInput"
           v-model="draft.title"
           variant="none"
           placeholder="Заголовок"
+          class="w-full"
           :ui="{
-            base: 'text-2xl font-semibold text-highlighted px-0 pb-3 border-b border-default',
+            base: 'w-full text-2xl font-semibold text-highlighted px-0 pb-3 border-b border-default rounded-none focus:outline-none',
           }"
           @update:model-value="scheduleSave"
           @blur="flush"
