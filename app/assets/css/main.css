@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 
+@theme static {
+  --font-sans: 'Onest', ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --ui-radius: 0.5rem;
+}
+
 @layer base {
   button:not(:disabled),
   [role='button'],
