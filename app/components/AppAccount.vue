@@ -97,13 +97,15 @@ watch(
     </UTooltip>
 
     <UPopover v-if="!demo">
-      <UButton
-        icon="i-lucide-user"
-        size="sm"
-        color="neutral"
-        variant="ghost"
-        aria-label="Аккаунт"
-      />
+      <UTooltip text="Аккаунт и синхронизация">
+        <UButton
+          icon="i-lucide-user"
+          size="sm"
+          color="neutral"
+          variant="ghost"
+          aria-label="Аккаунт"
+        />
+      </UTooltip>
 
       <template #content>
         <div v-if="user" class="p-3 w-56 space-y-2">

@@ -17,7 +17,7 @@ useSeoMeta({
   <UApp>
     <UHeader>
       <template #left>
-        <NuxtLink to="/" class="font-semibold text-highlighted"> Secure Notes </NuxtLink>
+        <NuxtLink to="/"><AppLogo /></NuxtLink>
       </template>
 
       <template #right>
