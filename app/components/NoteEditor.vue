@@ -22,6 +22,7 @@ const attaching = ref(false)
 const confirmOpen = ref(false)
 const toast = useToast()
 
+const shareOpen = ref(false)
 const shareEmail = ref('')
 const shareExpiry = ref('0')
 const shareError = ref('')
@@ -184,74 +185,85 @@ async function confirmDelete() {
           />
         </UTooltip>
 
-        <UPopover>
+        <UTooltip text="Поделиться">
           <UButton
             icon="i-lucide-share-2"
             size="sm"
             color="neutral"
             variant="ghost"
             aria-label="Поделиться"
+            @click="shareOpen = true"
           />
-          <template #content>
-            <div class="p-3 w-72 space-y-2">
-              <p v-if="!store.remote" class="text-xs text-muted">Нужен аккаунт для шаринга</p>
+        </UTooltip>
+
+        <UModal v-model:open="shareOpen" title="Поделиться заметкой">
+          <template #body>
+            <div class="space-y-4">
+              <p v-if="!store.remote" class="text-sm text-muted">
+                Для шаринга нужен аккаунт — иконка человека в шапке.
+              </p>
               <template v-else>
-                <form class="flex flex-col gap-2" @submit.prevent="doShare">
-                  <UInput
-                    v-model="shareEmail"
-                    type="email"
-                    placeholder="почта получателя"
-                    size="sm"
-                    class="w-full"
-                  />
-                  <USelect
-                    v-model="shareExpiry"
-                    size="sm"
-                    class="w-full"
-                    :items="[
-                      { label: 'без срока', value: '0' },
-                      { label: '1 день', value: '1' },
-                      { label: '7 дней', value: '7' },
-                      { label: '30 дней', value: '30' },
-                    ]"
-                  />
-                  <UButton
-                    type="submit"
-                    size="sm"
-                    :loading="sharing"
-                    :disabled="!shareEmail.trim()"
-                    block
-                  >
+                <form class="space-y-3" @submit.prevent="doShare">
+                  <UFormField label="Почта получателя">
+                    <UInput
+                      v-model="shareEmail"
+                      type="email"
+                      placeholder="user@example.com"
+                      class="w-full"
+                    />
+                  </UFormField>
+                  <UFormField label="Доступ истекает">
+                    <USelect
+                      v-model="shareExpiry"
+                      class="w-full"
+                      :items="[
+                        { label: 'никогда', value: '0' },
+                        { label: 'через 1 день', value: '1' },
+                        { label: 'через 7 дней', value: '7' },
+                        { label: 'через 30 дней', value: '30' },
+                      ]"
+                    />
+                  </UFormField>
+                  <UButton type="submit" :loading="sharing" :disabled="!shareEmail.trim()" block>
                     Поделиться
                   </UButton>
-                  <p v-if="shareError" class="text-xs text-error">{{ shareError }}</p>
+                  <p v-if="shareError" class="text-sm text-error">{{ shareError }}</p>
                 </form>
-                <ul v-if="noteShares.length" class="flex flex-col gap-1">
-                  <li
-                    v-for="s in noteShares"
-                    :key="s.id"
-                    class="flex items-center gap-2 text-sm rounded px-2 py-1 hover:bg-elevated"
-                  >
-                    <UIcon name="i-lucide-user" class="text-muted shrink-0" />
-                    <span class="truncate">{{ s.recipientEmail }}</span>
-                    <span class="text-muted text-xs shrink-0">{{ expiryLabel(s.expiresAt) }}</span>
-                    <div class="flex-1" />
-                    <UButton
-                      icon="i-lucide-x"
-                      size="xs"
-                      variant="ghost"
-                      color="error"
-                      @click="store.revokeShare(s.id)"
-                    />
-                  </li>
-                </ul>
+
+                <div v-if="noteShares.length" class="space-y-1">
+                  <p class="text-xs font-medium text-muted uppercase">Уже есть доступ</p>
+                  <ul class="flex flex-col gap-1">
+                    <li
+                      v-for="s in noteShares"
+                      :key="s.id"
+                      class="flex items-center gap-2 text-sm rounded px-2 py-1 hover:bg-elevated"
+                    >
+                      <UIcon name="i-lucide-user" class="text-muted shrink-0" />
+                      <span class="truncate">{{ s.recipientEmail }}</span>
+                      <span class="text-muted text-xs shrink-0">{{
+                        expiryLabel(s.expiresAt)
+                      }}</span>
+                      <div class="flex-1" />
+                      <UButton
+                        icon="i-lucide-x"
+                        size="xs"
+                        variant="ghost"
+                        color="error"
+                        aria-label="Отозвать доступ"
+                        @click="store.revokeShare(s.id)"
+                      />
+                    </li>
+                  </ul>
+                </div>
+
                 <p class="text-xs text-muted">
-                  Уходит снимок заметки. Поправите — поделитесь заново
+                  Получатель увидит копию заметки на момент отправки. Отредактируете — поделитесь
+                  ещё раз.
                 </p>
               </template>
             </div>
           </template>
-        </UPopover>
+        </UModal>
 
         <UDropdownMenu
           :items="[
