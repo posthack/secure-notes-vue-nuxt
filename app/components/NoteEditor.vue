@@ -18,8 +18,9 @@ const attachments = computed(() => store.files.filter((f) => f.noteId === props.
 const noteShares = computed(() => store.outgoing.filter((s) => s.noteId === props.note.id))
 
 const fileInput = ref<HTMLInputElement | null>(null)
-const fileError = ref('')
 const attaching = ref(false)
+const confirmOpen = ref(false)
+const toast = useToast()
 
 const shareEmail = ref('')
 const shareExpiry = ref('0')
@@ -97,9 +98,8 @@ async function onPick(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  fileError.value = ''
   if (file.size > MAX_FILE_BYTES) {
-    fileError.value = `файл больше ${humanSize(MAX_FILE_BYTES)}`
+    toast.add({ title: `файл больше ${humanSize(MAX_FILE_BYTES)}`, color: 'error' })
     input.value = ''
     return
   }
@@ -108,7 +108,7 @@ async function onPick(e: Event) {
     const buf = new Uint8Array(await file.arrayBuffer())
     await store.addFile(props.note.id, file.name, file.type, buf)
   } catch {
-    fileError.value = 'не удалось прикрепить файл'
+    toast.add({ title: 'не удалось прикрепить файл', color: 'error' })
   } finally {
     attaching.value = false
     input.value = ''
@@ -116,7 +116,6 @@ async function onPick(e: Event) {
 }
 
 async function download(f: FileItem) {
-  fileError.value = ''
   try {
     const { name, type, data } = await store.readFile(f.id)
     const blob = new Blob([data], { type: type || 'application/octet-stream' })
@@ -127,7 +126,7 @@ async function download(f: FileItem) {
     a.click()
     URL.revokeObjectURL(url)
   } catch {
-    fileError.value = 'не удалось расшифровать файл'
+    toast.add({ title: 'не удалось расшифровать файл', color: 'error' })
   }
 }
 
@@ -156,9 +155,9 @@ function expiryLabel(ts: number | null) {
   return left > 0 ? `ещё ${left} дн.` : 'истёк'
 }
 
-async function confirmDelete(close: () => void) {
+async function confirmDelete() {
   await store.removeNote(props.note.id)
-  close()
+  confirmOpen.value = false
   emit('deleted')
 }
 </script>
@@ -172,61 +171,18 @@ async function confirmDelete(close: () => void) {
         </span>
         <div class="flex-1" />
 
-        <UPopover>
+        <input ref="fileInput" type="file" class="hidden" @change="onPick" />
+        <UTooltip text="Прикрепить файл">
           <UButton
             icon="i-lucide-paperclip"
             size="sm"
             color="neutral"
             variant="ghost"
             aria-label="Вложения"
+            :loading="attaching"
+            @click="fileInput?.click()"
           />
-          <template #content>
-            <div class="p-3 w-72 space-y-2">
-              <input ref="fileInput" type="file" class="hidden" @change="onPick" />
-              <UButton
-                icon="i-lucide-paperclip"
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                block
-                :loading="attaching"
-                @click="fileInput?.click()"
-              >
-                Прикрепить файл
-              </UButton>
-              <p v-if="fileError" class="text-xs text-error">{{ fileError }}</p>
-              <ul v-if="attachments.length" class="flex flex-col gap-1">
-                <li
-                  v-for="f in attachments"
-                  :key="f.id"
-                  class="flex items-center gap-2 text-sm rounded px-2 py-1 hover:bg-elevated"
-                >
-                  <UIcon name="i-lucide-file" class="text-muted shrink-0" />
-                  <button class="truncate text-left hover:underline" @click="download(f)">
-                    {{ f.name }}
-                  </button>
-                  <span class="text-muted text-xs shrink-0">{{ humanSize(f.size) }}</span>
-                  <div class="flex-1" />
-                  <UButton
-                    icon="i-lucide-download"
-                    size="xs"
-                    variant="ghost"
-                    color="neutral"
-                    @click="download(f)"
-                  />
-                  <UButton
-                    icon="i-lucide-x"
-                    size="xs"
-                    variant="ghost"
-                    color="error"
-                    @click="store.removeFile(f.id)"
-                  />
-                </li>
-              </ul>
-              <p v-else class="text-xs text-muted">Пока ничего не прикреплено</p>
-            </div>
-          </template>
-        </UPopover>
+        </UTooltip>
 
         <UPopover>
           <UButton
@@ -297,24 +253,34 @@ async function confirmDelete(close: () => void) {
           </template>
         </UPopover>
 
-        <UPopover>
+        <UDropdownMenu
+          :items="[
+            {
+              label: 'Удалить заметку',
+              icon: 'i-lucide-trash-2',
+              color: 'error',
+              onSelect: () => (confirmOpen = true),
+            },
+          ]"
+        >
           <UButton
-            icon="i-lucide-trash-2"
+            icon="i-lucide-ellipsis-vertical"
             size="sm"
-            color="error"
+            color="neutral"
             variant="ghost"
-            aria-label="Удалить"
+            aria-label="Ещё"
           />
-          <template #content="{ close }">
-            <div class="p-3 w-56 space-y-3">
-              <p class="text-sm">Удалить заметку?</p>
-              <div class="flex gap-2">
-                <UButton size="xs" color="error" @click="confirmDelete(close)">Удалить</UButton>
-                <UButton size="xs" variant="ghost" color="neutral" @click="close">Отмена</UButton>
-              </div>
-            </div>
+        </UDropdownMenu>
+
+        <UModal v-model:open="confirmOpen" title="Удалить заметку?" :ui="{ footer: 'justify-end' }">
+          <template #body>
+            <p class="text-sm text-muted">Вложения удалятся вместе с ней. Отменить нельзя.</p>
           </template>
-        </UPopover>
+          <template #footer>
+            <UButton variant="ghost" color="neutral" @click="confirmOpen = false">Отмена</UButton>
+            <UButton color="error" @click="confirmDelete">Удалить</UButton>
+          </template>
+        </UModal>
       </div>
     </div>
 
@@ -327,7 +293,7 @@ async function confirmDelete(close: () => void) {
           placeholder="Заголовок"
           class="w-full"
           :ui="{
-            base: 'w-full text-2xl font-semibold text-highlighted px-0 pb-3 border-b border-default rounded-none focus:outline-none',
+            base: 'w-full text-3xl md:text-3xl font-semibold text-highlighted px-0 pb-1 rounded-none focus:outline-none',
           }"
           @update:model-value="scheduleSave"
           @blur="flush"
@@ -359,7 +325,7 @@ async function confirmDelete(close: () => void) {
           placeholder="Начните писать…"
           autoresize
           :rows="1"
-          :ui="{ base: 'px-0 leading-relaxed' }"
+          :ui="{ base: 'px-0 text-[15px] md:text-[15px] leading-relaxed' }"
           @update:model-value="scheduleSave"
           @blur="flush"
         />
