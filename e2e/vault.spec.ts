@@ -24,7 +24,7 @@ test('заметка переживает lock/unlock, неверный паро
   await expect(page.getByText('Хранилище заперто')).toBeVisible()
 
   // failure-path: неверный пароль
-  const unlock = page.locator('input[type="password"]:not([placeholder])')
+  const unlock = page.locator('input[autocomplete="current-password"]')
   await unlock.fill('чужой-пароль')
   await page.getByRole('button', { name: 'Разблокировать' }).click()
   await expect(page.getByText('неверный пароль')).toBeVisible()

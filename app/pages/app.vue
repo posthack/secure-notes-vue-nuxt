@@ -29,10 +29,10 @@ onBeforeUnmount(() => {
 <template>
   <div>
     <NotesView v-if="store.status === 'unlocked'" />
-    <UContainer v-else class="flex justify-center items-center min-h-[60vh] py-16">
+    <UContainer v-else class="flex justify-center items-center min-h-[calc(100dvh-4rem)]">
       <VaultSetup v-if="store.status === 'empty'" />
       <VaultUnlock v-else-if="store.status === 'locked'" />
-      <div v-else class="text-muted">Загрузка…</div>
+      <UIcon v-else name="i-lucide-loader-circle" class="size-6 animate-spin text-muted" />
     </UContainer>
   </div>
 </template>

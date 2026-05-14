@@ -47,20 +47,24 @@ async function submit() {
 </script>
 
 <template>
-  <UCard class="w-full max-w-md">
-    <template #header>
-      <h1 class="text-lg font-semibold">Новое хранилище</h1>
-      <p class="text-sm text-muted mt-1">
+  <div class="w-full max-w-sm flex flex-col items-center text-center gap-6">
+    <span class="flex items-center justify-center size-14 rounded-2xl bg-primary/10 text-primary">
+      <UIcon name="i-lucide-shield-plus" class="size-7" />
+    </span>
+    <div class="space-y-1.5">
+      <h1 class="text-2xl font-semibold text-highlighted">Новое хранилище</h1>
+      <p class="text-sm text-muted text-balance">
         Пароль не уходит с устройства и восстановить его нельзя. Забудете — данные пропадут.
       </p>
-    </template>
+    </div>
 
-    <form class="space-y-4" @submit.prevent="submit">
+    <form class="w-full space-y-3 text-left" @submit.prevent="submit">
       <UFormField label="Мастер-пароль">
         <UInput
           v-model="password"
           :type="reveal ? 'text' : 'password'"
           autocomplete="new-password"
+          size="xl"
           class="w-full"
         />
       </UFormField>
@@ -69,6 +73,7 @@ async function submit() {
           v-model="confirm"
           :type="reveal ? 'text' : 'password'"
           autocomplete="new-password"
+          size="xl"
           class="w-full"
         />
       </UFormField>
@@ -91,11 +96,11 @@ async function submit() {
 
       <p v-if="error" class="text-sm text-error">{{ error }}</p>
 
-      <UButton type="submit" :loading="busy" block>Создать</UButton>
+      <UButton type="submit" :loading="busy" block size="xl">Создать</UButton>
 
       <UButton v-if="demo" variant="link" color="neutral" block @click="tryDemo">
         или посмотреть на демо-данных
       </UButton>
     </form>
-  </UCard>
+  </div>
 </template>
