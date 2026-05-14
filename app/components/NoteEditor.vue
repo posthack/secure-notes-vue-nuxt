@@ -166,7 +166,7 @@ async function confirmDelete(close: () => void) {
 <template>
   <div class="flex flex-col h-full">
     <div class="shrink-0 border-b border-default">
-      <div class="max-w-5xl flex items-center gap-2 px-8 h-14">
+      <div class="max-w-3xl mx-auto w-full flex items-center gap-2 px-6 md:px-8 h-14">
         <span class="text-xs text-muted">
           {{ saveState === 'saving' ? 'сохранение…' : 'сохранено' }}
         </span>
@@ -319,7 +319,7 @@ async function confirmDelete(close: () => void) {
     </div>
 
     <div class="flex-1 min-h-0 overflow-y-auto">
-      <div class="max-w-5xl flex flex-col gap-4 px-8 py-8">
+      <div class="max-w-3xl mx-auto w-full flex flex-col gap-4 px-6 md:px-8 py-10">
         <UInput
           ref="titleInput"
           v-model="draft.title"
