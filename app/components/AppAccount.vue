@@ -108,47 +108,50 @@ watch(
       </UTooltip>
 
       <template #content>
-        <div v-if="user" class="p-3 w-56 space-y-2">
-          <p class="text-sm truncate">{{ user.email }}</p>
-          <p class="text-xs text-muted">синхронизация включена</p>
-          <UButton
-            icon="i-lucide-refresh-cw"
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            block
-            @click="store.sync()"
-          >
-            Обновить
-          </UButton>
-          <UButton
-            icon="i-lucide-log-out"
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            block
-            @click="authClient.signOut()"
-          >
-            Выйти
-          </UButton>
+        <div v-if="user" class="p-1 w-64">
+          <div class="px-3 py-2.5">
+            <p class="text-sm font-medium text-highlighted truncate">{{ user.email }}</p>
+            <p class="text-xs text-muted mt-0.5">{{ syncText }}</p>
+          </div>
+          <USeparator />
+          <div class="p-1">
+            <UButton
+              icon="i-lucide-refresh-cw"
+              variant="ghost"
+              color="neutral"
+              block
+              class="justify-start"
+              @click="store.sync()"
+            >
+              Синхронизировать
+            </UButton>
+            <UButton
+              icon="i-lucide-log-out"
+              variant="ghost"
+              color="neutral"
+              block
+              class="justify-start"
+              @click="authClient.signOut()"
+            >
+              Выйти
+            </UButton>
+          </div>
         </div>
 
-        <form v-else class="p-3 w-64 space-y-2" @submit.prevent="submit">
-          <UInput v-model="email" type="email" placeholder="почта" size="sm" class="w-full" />
-          <UInput
-            v-model="password"
-            type="password"
-            placeholder="пароль"
-            size="sm"
-            class="w-full"
-          />
+        <form v-else class="p-3 w-64 space-y-3" @submit.prevent="submit">
+          <UFormField label="Почта">
+            <UInput v-model="email" type="email" size="sm" class="w-full" />
+          </UFormField>
+          <UFormField label="Пароль">
+            <UInput v-model="password" type="password" size="sm" class="w-full" />
+          </UFormField>
           <UButton type="submit" size="sm" :loading="busy" block>
             {{ mode === 'in' ? 'Войти' : 'Регистрация' }}
           </UButton>
           <UButton
             type="button"
             size="xs"
-            variant="ghost"
+            variant="link"
             color="neutral"
             block
             @click="mode = mode === 'in' ? 'up' : 'in'"
