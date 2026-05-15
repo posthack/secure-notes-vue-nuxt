@@ -7,6 +7,17 @@ const tab = ref<'mine' | 'shared'>('mine')
 const selectedId = ref<string | null>(store.notes[0]?.id ?? null)
 const selectedSharedId = ref<string | null>(null)
 const query = ref('')
+const mobileOpen = ref(false)
+
+function openNote(id: string) {
+  selectedId.value = id
+  mobileOpen.value = true
+}
+
+function openShared(id: string) {
+  selectedSharedId.value = id
+  mobileOpen.value = true
+}
 
 const selected = computed(() => store.notes.find((n) => n.id === selectedId.value) ?? null)
 const selectedShared = computed(
@@ -52,6 +63,7 @@ function expiryLabel(ts: number | null) {
 async function create() {
   const note = await store.addNote('Без названия', '')
   selectedId.value = note.id
+  mobileOpen.value = true
 }
 
 function onDeleted() {
@@ -62,7 +74,8 @@ function onDeleted() {
 <template>
   <div class="flex flex-col md:flex-row h-[calc(100dvh-4rem)]">
     <aside
-      class="md:w-80 shrink-0 border-b md:border-b-0 md:border-r border-default overflow-y-auto flex flex-col"
+      class="md:w-80 shrink-0 md:border-r border-default overflow-y-auto flex-col"
+      :class="mobileOpen ? 'hidden md:flex' : 'flex'"
     >
       <div class="p-3 space-y-2 shrink-0 border-b border-default">
         <div class="flex items-center gap-2">
@@ -125,7 +138,7 @@ function onDeleted() {
             :key="note.id"
             class="w-full text-left px-4 py-3 border-b border-default transition-colors"
             :class="note.id === selectedId ? 'bg-primary/5' : 'hover:bg-elevated'"
-            @click="selectedId = note.id"
+            @click="openNote(note.id)"
           >
             <div class="flex items-baseline gap-2">
               <span
@@ -149,7 +162,7 @@ function onDeleted() {
             :key="s.id"
             class="w-full text-left px-4 py-3 border-b border-default hover:bg-elevated"
             :class="{ 'bg-elevated': s.id === selectedSharedId }"
-            @click="selectedSharedId = s.id"
+            @click="openShared(s.id)"
           >
             <div class="font-medium truncate">{{ s.title || 'Без названия' }}</div>
             <div class="text-sm text-muted truncate">{{ s.ownerEmail }}</div>
@@ -158,8 +171,13 @@ function onDeleted() {
       </div>
     </aside>
 
-    <section class="flex-1 min-h-0 flex flex-col">
-      <NoteEditor v-if="tab === 'mine' && selected" :note="selected" @deleted="onDeleted" />
+    <section class="flex-1 min-h-0 flex-col" :class="mobileOpen ? 'flex' : 'hidden md:flex'">
+      <NoteEditor
+        v-if="tab === 'mine' && selected"
+        :note="selected"
+        @deleted="onDeleted"
+        @back="mobileOpen = false"
+      />
 
       <div
         v-else-if="tab === 'mine'"
@@ -171,6 +189,15 @@ function onDeleted() {
 
       <div v-else-if="selectedShared" class="flex-1 min-h-0 overflow-y-auto p-6">
         <div class="max-w-3xl mx-auto w-full flex flex-col gap-3">
+          <UButton
+            icon="i-lucide-chevron-left"
+            size="sm"
+            color="neutral"
+            variant="ghost"
+            class="md:hidden self-start -ml-2"
+            aria-label="Назад"
+            @click="mobileOpen = false"
+          />
           <h2 class="text-2xl font-semibold">{{ selectedShared.title || 'Без названия' }}</h2>
           <p class="text-sm text-muted">
             от {{ selectedShared.ownerEmail }} · {{ expiryLabel(selectedShared.expiresAt) }}

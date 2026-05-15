@@ -2,7 +2,7 @@
 import { MAX_FILE_BYTES, type FileItem, type Note } from '~/stores/notes'
 
 const props = defineProps<{ note: Note }>()
-const emit = defineEmits<{ deleted: [] }>()
+const emit = defineEmits<{ deleted: []; back: [] }>()
 
 const store = useNotesStore()
 
@@ -167,6 +167,15 @@ async function confirmDelete() {
   <div class="flex flex-col h-full">
     <div class="shrink-0 border-b border-default">
       <div class="max-w-3xl mx-auto w-full flex items-center gap-2 px-6 md:px-8 h-14">
+        <UButton
+          icon="i-lucide-chevron-left"
+          size="sm"
+          color="neutral"
+          variant="ghost"
+          class="md:hidden -ml-2"
+          aria-label="Назад"
+          @click="emit('back')"
+        />
         <span class="text-xs text-muted">
           {{ saveState === 'saving' ? 'сохранение…' : 'сохранено' }}
         </span>
