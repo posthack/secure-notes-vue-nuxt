@@ -166,7 +166,7 @@ async function confirmDelete() {
 <template>
   <div class="flex flex-col h-full">
     <div class="shrink-0 border-b border-default">
-      <div class="max-w-3xl mx-auto w-full flex items-center gap-2 px-6 md:px-8 h-14">
+      <div class="flex items-center gap-2 px-4 md:px-6 h-14">
         <UButton
           icon="i-lucide-chevron-left"
           size="sm"

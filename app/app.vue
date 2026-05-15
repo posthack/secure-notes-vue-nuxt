@@ -15,7 +15,7 @@ useSeoMeta({
 
 <template>
   <UApp>
-    <UHeader>
+    <UHeader :ui="{ container: 'max-w-none' }">
       <template #left>
         <NuxtLink to="/"><AppLogo /></NuxtLink>
       </template>
