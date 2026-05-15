@@ -20,3 +20,15 @@
     cursor: not-allowed;
   }
 }
+
+@layer base {
+  button,
+  a,
+  input,
+  textarea {
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+  }
+}
